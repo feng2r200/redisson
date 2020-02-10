@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2013-2019 Nikita Koksharov
+ * Copyright (c) 2013-2020 Nikita Koksharov
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -125,5 +125,19 @@ public interface RSemaphoreRx extends RExpirableRx {
      * @param permits amount of permits to add/remove
      */
     Completable addPermits(int permits);
+
+    /**
+     * Returns amount of available permits.
+     *
+     * @return number of permits
+     */
+    Single<Integer> availablePermits();
+
+    /**
+     * Acquires and returns all permits that are immediately available.
+     *
+     * @return number of permits
+     */
+    Single<Integer> drainPermits();
 
 }

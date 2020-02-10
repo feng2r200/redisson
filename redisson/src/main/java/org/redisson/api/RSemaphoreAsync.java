@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2013-2019 Nikita Koksharov
+ * Copyright (c) 2013-2020 Nikita Koksharov
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -122,5 +122,19 @@ public interface RSemaphoreAsync extends RExpirableAsync {
      * @param permits amount of permits to add/remove
      */
     RFuture<Void> addPermitsAsync(int permits);
+
+    /**
+     * Returns amount of available permits.
+     *
+     * @return number of permits
+     */
+    RFuture<Integer> availablePermitsAsync();
+
+    /**
+     * Acquires and returns all permits that are immediately available.
+     *
+     * @return number of permits
+     */
+    RFuture<Integer> drainPermitsAsync();
 
 }

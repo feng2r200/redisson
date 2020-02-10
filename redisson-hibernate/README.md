@@ -10,16 +10,16 @@ Redisson provides various Hibernate Cache factories including those with feature
 
 **local cache** - so called `near cache`, which is useful for use cases when Hibernate Cache used mostly for read operations and/or network roundtrips are undesirable. It caches Map entries on Redisson side and executes read operations up to **5x faster** in comparison with common implementation. All local caches with the same name connected to the same pub/sub channel which is used for messaging between them. In particular to send entity update or entity invalidate event.
 
-**data partitioning** - data partitioning in cluster mode. It allows to scale available memory, read/write operations and entry eviction process for individual Hibernate Cache instance in Redis cluster.
+**data partitioning** - it allows to scale available memory, read/write operations and entry eviction process for individual Hibernate Cache instance in Redis cluster.
 
 Below is the list of all available factories with local cache and/or data partitioning support:
 
 |Class name | Local cache | Data partitioning |
 | ------------- | ------------- | ------------|
-|RedissonRegionFactory<br/>&nbsp; | No | No |
-|RedissonLocalCachedRegionFactory<br/><sub><i>available only in [Redisson PRO](http://redisson.pro) edition</i></sub>  | **Yes** | No |
-|RedissonClusteredRegionFactory<br/><sub><i>available only in [Redisson PRO](http://redisson.pro) edition</i></sub> | No | **Yes** |
-|RedissonClusteredLocalCachedRegionFactory<br/><sub><i>available only in [Redisson PRO](http://redisson.pro) edition</i></sub> | **Yes** | **Yes** |
+|RedissonRegionFactory<br/>&nbsp; | :heavy_multiplication_x: | :heavy_multiplication_x: |
+|RedissonLocalCachedRegionFactory<br/><sub><i>available only in [Redisson PRO](http://redisson.pro) edition</i></sub>  | :heavy_check_mark: | :heavy_multiplication_x: |
+|RedissonClusteredRegionFactory<br/><sub><i>available only in [Redisson PRO](http://redisson.pro) edition</i></sub> | :heavy_multiplication_x: | :heavy_check_mark: |
+|RedissonClusteredLocalCachedRegionFactory<br/><sub><i>available only in [Redisson PRO](http://redisson.pro) edition</i></sub> | :heavy_check_mark: | :heavy_check_mark: |
 
 ## Hibernate Cache Usage
 
@@ -32,7 +32,7 @@ Maven
          <groupId>org.redisson</groupId>
          <!-- for Hibernate v5.3.3+ - v5.4.x -->
          <artifactId>redisson-hibernate-53</artifactId>
-         <version>3.11.6</version>
+         <version>3.12.1</version>
      </dependency>
 ```
 
@@ -40,7 +40,7 @@ Gradle
 
 ```groovy
      // for Hibernate v5.3.3+ - v5.4.x
-     compile 'org.redisson:redisson-hibernate-53:3.11.6'
+     compile 'org.redisson:redisson-hibernate-53:3.12.1'
 ```
 
 ### 2. Specify hibernate cache settings
@@ -77,6 +77,9 @@ By default each Region Factory creates own Redisson instance. For multiple appli
 <!-- 2nd level cache activation -->
 <property name="hibernate.cache.use_second_level_cache" value="true" />
 <property name="hibernate.cache.use_query_cache" value="true" />
+
+<!-- Redisson can fallback on database if Redis cache is unavailable -->
+<property name="hibernate.cache.redisson.fallback" value="true" />
 
 <!-- Redisson YAML config (located in filesystem or classpath) -->
 <property name="hibernate.cache.redisson.config" value="/redisson.yaml" />

@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2013-2019 Nikita Koksharov
+ * Copyright (c) 2013-2020 Nikita Koksharov
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -29,7 +29,11 @@ public class RedisURI {
     private final boolean ssl;
     private final String host;
     private final int port;
-    
+
+    public RedisURI(String scheme, String host, int port) {
+        this(scheme + "://" + host + ":" + port);
+    }
+
     public RedisURI(String uri) {
         if (!uri.startsWith("redis://")
                 && !uri.startsWith("rediss://")) {
@@ -124,7 +128,7 @@ public class RedisURI {
 
     @Override
     public String toString() {
-        return getScheme() + "://" + host + ":" + port;
+        return getScheme() + "://" + trimIpv6Brackets(host) + ":" + port;
     }
     
 }

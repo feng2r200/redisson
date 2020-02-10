@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2013-2019 Nikita Koksharov
+ * Copyright (c) 2013-2020 Nikita Koksharov
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -64,7 +64,7 @@ public class RedissonPriorityQueue<V> extends RedissonList<V> implements RPriori
     public static class BinarySearchResult<V> {
 
         private V value;
-        private Integer index;
+        private int index = -1;
 
         public BinarySearchResult(V value) {
             super();
@@ -74,10 +74,10 @@ public class RedissonPriorityQueue<V> extends RedissonList<V> implements RPriori
         public BinarySearchResult() {
         }
 
-        public void setIndex(Integer index) {
+        public void setIndex(int index) {
             this.index = index;
         }
-        public Integer getIndex() {
+        public int getIndex() {
             return index;
         }
 

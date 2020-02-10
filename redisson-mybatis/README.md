@@ -8,16 +8,16 @@ Redisson provides various MyBatis Cache implementations including those with fea
 
 **local cache** - so called `near cache`, which is useful for use cases when MyBatis Cache used mostly for read operations and/or network roundtrips are undesirable. It caches Map entries on Redisson side and executes read operations up to **45x faster** in comparison with common implementation. All local caches with the same name connected to the same pub/sub channel which is used for messaging between them. In particular to send entity update or entity invalidate event.
 
-**data partitioning** - data partitioning in cluster mode. It allows to scale available memory, read/write operations and entry eviction process for individual MyBatis Cache instance in Redis cluster.
+**data partitioning** - allows to scale available memory, read/write operations and entry eviction process for individual MyBatis Cache instance in Redis cluster.
 
 Below is the list of all available implementations with local cache and/or data partitioning support:
 
 |Class name | Local cache | Data partitioning |
 | ------------- | ------------- | ------------|
-|RedissonCache<br/>&nbsp; | No | No |
-|RedissonLocalCachedCache<br/><sub><i>available only in [Redisson PRO](http://redisson.pro) edition</i></sub>  | **Yes** | No |
-|RedissonClusteredCache<br/><sub><i>available only in [Redisson PRO](http://redisson.pro) edition</i></sub> | No | **Yes** |
-|RedissonClusteredLocalCachedCache<br/><sub><i>available only in [Redisson PRO](http://redisson.pro) edition</i></sub> | **Yes** | **Yes** |
+|RedissonCache<br/>&nbsp; | :heavy_multiplication_x: | :heavy_multiplication_x: |
+|RedissonLocalCachedCache<br/><sub><i>available only in [Redisson PRO](http://redisson.pro) edition</i></sub>  | :heavy_check_mark: | :heavy_multiplication_x: |
+|RedissonClusteredCache<br/><sub><i>available only in [Redisson PRO](http://redisson.pro) edition</i></sub> | :heavy_multiplication_x: | :heavy_check_mark: |
+|RedissonClusteredLocalCachedCache<br/><sub><i>available only in [Redisson PRO](http://redisson.pro) edition</i></sub> | :heavy_check_mark: | :heavy_check_mark: |
 
 ## MyBatis Cache Usage
 
@@ -29,14 +29,14 @@ Maven
      <dependency>
          <groupId>org.redisson</groupId>
          <artifactId>redisson-mybatis</artifactId>
-         <version>3.11.7</version>
+         <version>3.12.1</version>
      </dependency>
 ```
 
 Gradle
 
 ```groovy
-     compile 'org.redisson:redisson-mybatis:3.11.7'
+     compile 'org.redisson:redisson-mybatis:3.12.1'
 ```
 
 ### 2. Specify MyBatis cache settings

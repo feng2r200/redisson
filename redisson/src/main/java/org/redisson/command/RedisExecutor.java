@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2013-2019 Nikita Koksharov
+ * Copyright (c) 2013-2020 Nikita Koksharov
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,6 +15,7 @@
  */
 package org.redisson.command;
 
+import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.util.ReferenceCountUtil;
@@ -197,8 +198,15 @@ public class RedisExecutor<V, R> {
                             if (attempt == attempts) {
                                 if (writeFuture != null && writeFuture.cancel(false)) {
                                     if (exception == null) {
-                                        exception = new RedisTimeoutException("Command still hasn't been written into connection! Increase nettyThreads and/or retryInterval settings "
-                                                + "Node source: " + source + ", connection: " + connectionFuture.getNow()
+                                        long totalSize = 0;
+                                        for (Object param : params) {
+                                            if (param instanceof ByteBuf) {
+                                                totalSize += ((ByteBuf) param).readableBytes();
+                                            }
+                                        }
+
+                                        exception = new RedisTimeoutException("Command still hasn't been written into connection! Increase nettyThreads and/or retryInterval settings. Payload size in bytes: " + totalSize
+                                                + ". Node source: " + source + ", connection: " + connectionFuture.getNow()
                                                 + ", command: " + LogHelper.toString(command, params)
                                                 + " after " + attempt + " retry attempts");
                                     }
@@ -649,10 +657,14 @@ public class RedisExecutor<V, R> {
         return connectionFuture;
     }
     
-    private static final Map<ClassLoader, Map<Codec, Codec>> CODECS = ReferenceCacheMap.soft(0, 0);
+    private static final Map<ClassLoader, Map<Codec, Codec>> CODECS = ReferenceCacheMap.soft(0, 60*60*1000);
 
     protected Codec getCodec(Codec codec) {
         if (codec == null) {
+            return codec;
+        }
+
+        if (codec.getClassLoader() != codec.getClass().getClassLoader()) {
             return codec;
         }
 

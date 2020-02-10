@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2013-2019 Nikita Koksharov
+ * Copyright (c) 2013-2020 Nikita Koksharov
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,7 +17,6 @@ package org.redisson.executor;
 
 import org.redisson.RedissonExecutorService;
 import org.redisson.RedissonRemoteService;
-import org.redisson.api.RBlockingQueue;
 import org.redisson.api.RFuture;
 import org.redisson.api.RMap;
 import org.redisson.api.executor.*;
@@ -30,7 +29,6 @@ import org.redisson.remote.*;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
@@ -87,9 +85,8 @@ public class RedissonExecutorRemoteService extends RedissonRemoteService {
     }
 
     @Override
-    protected <T> void invokeMethod(Class<T> remoteInterface, RBlockingQueue<String> requestQueue, RemoteServiceRequest request,
-                                    RemoteServiceMethod method, String responseName, ExecutorService executor, RFuture<RemoteServiceCancelRequest> cancelRequestFuture,
-                                    RPromise<RRemoteServiceResponse> responsePromise) {
+    protected <T> void invokeMethod(RemoteServiceRequest request, RemoteServiceMethod method,
+                RFuture<RemoteServiceCancelRequest> cancelRequestFuture, RPromise<RRemoteServiceResponse> responsePromise) {
         startedListeners.stream().forEach(l -> l.onStarted(request.getId()));
 
         if (taskTimeout > 0) {
@@ -97,7 +94,7 @@ public class RedissonExecutorRemoteService extends RedissonRemoteService {
                 ((RPromise) cancelRequestFuture).trySuccess(new RemoteServiceCancelRequest(true, false));
             }, taskTimeout, TimeUnit.MILLISECONDS);
         }
-        super.invokeMethod(remoteInterface, requestQueue, request, method, responseName, executor, cancelRequestFuture, responsePromise);
+        super.invokeMethod(request, method, cancelRequestFuture, responsePromise);
 
         if (responsePromise.getNow() instanceof RemoteServiceResponse) {
             RemoteServiceResponse response = (RemoteServiceResponse) responsePromise.getNow();

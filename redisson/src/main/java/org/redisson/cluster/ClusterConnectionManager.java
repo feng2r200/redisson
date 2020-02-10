@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2013-2019 Nikita Koksharov
+ * Copyright (c) 2013-2020 Nikita Koksharov
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,35 +15,15 @@
  */
 package org.redisson.cluster;
 
-import java.net.InetSocketAddress;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.BitSet;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.Queue;
-import java.util.Set;
-import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicReference;
-import java.util.stream.Collectors;
-
+import io.netty.resolver.AddressResolver;
+import io.netty.util.NetUtil;
+import io.netty.util.concurrent.Future;
+import io.netty.util.concurrent.FutureListener;
+import io.netty.util.concurrent.ScheduledFuture;
+import org.redisson.api.NatMapper;
 import org.redisson.api.NodeType;
 import org.redisson.api.RFuture;
-import org.redisson.client.RedisClient;
-import org.redisson.client.RedisClientConfig;
-import org.redisson.client.RedisConnection;
-import org.redisson.client.RedisConnectionException;
-import org.redisson.client.RedisException;
+import org.redisson.client.*;
 import org.redisson.client.protocol.RedisCommands;
 import org.redisson.client.protocol.RedisStrictCommand;
 import org.redisson.cluster.ClusterNodeInfo.Flag;
@@ -63,11 +43,15 @@ import org.redisson.misc.RedissonPromise;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import io.netty.resolver.AddressResolver;
-import io.netty.util.NetUtil;
-import io.netty.util.concurrent.Future;
-import io.netty.util.concurrent.FutureListener;
-import io.netty.util.concurrent.ScheduledFuture;
+import java.net.InetSocketAddress;
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Collectors;
 
 /**
  * 
@@ -88,7 +72,7 @@ public class ClusterConnectionManager extends MasterSlaveConnectionManager {
     
     private String configEndpointHostName;
     
-    private final Map<String, String> natMap;
+    private final NatMapper natMapper;
     
     public ClusterConnectionManager(ClusterServersConfig cfg, Config config, UUID id) {
         super(config, id);
@@ -97,7 +81,7 @@ public class ClusterConnectionManager extends MasterSlaveConnectionManager {
             throw new IllegalArgumentException("At least one cluster node should be defined!");
         }
 
-        natMap = cfg.getNatMap();
+        this.natMapper = cfg.getNatMapper();
         this.config = create(cfg);
         initTimer(this.config);
         
@@ -171,9 +155,9 @@ public class ClusterConnectionManager extends MasterSlaveConnectionManager {
         if (cfg.isCheckSlotsCoverage() && lastPartitions.size() != MAX_SLOT) {
             stopThreads();
             if (failedMasters.isEmpty()) {
-                throw new RedisConnectionException("Not all slots covered! Only " + lastPartitions.size() + " slots are available", lastException);
+                throw new RedisConnectionException("Not all slots covered! Only " + lastPartitions.size() + " slots are available. Set checkSlotsCoverage = false to avoid this check.", lastException);
             } else {
-                throw new RedisConnectionException("Not all slots covered! Only " + lastPartitions.size() + " slots are available. Failed masters according to cluster status: " + failedMasters, lastException);
+                throw new RedisConnectionException("Not all slots covered! Only " + lastPartitions.size() + " slots are available. Set checkSlotsCoverage = false to avoid this check. Failed masters according to cluster status: " + failedMasters, lastException);
             }
         }
         
@@ -430,6 +414,7 @@ public class ClusterConnectionManager extends MasterSlaveConnectionManager {
         for (RedisURI uri : failedSlaves) {
             currentPart.addFailedSlaveAddress(uri);
             if (entry.slaveDown(uri, FreezeReason.MANAGER)) {
+                disconnectNode(uri);
                 log.warn("slave: {} has down for slot ranges: {}", uri, currentPart.getSlotRanges());
             }
         }
@@ -502,14 +487,16 @@ public class ClusterConnectionManager extends MasterSlaveConnectionManager {
                     if (!newMasterPart.getMasterAddress().equals(currentPart.getMasterAddress())) {
                         RedisURI newUri = newMasterPart.getMasterAddress();
                         RedisURI oldUri = currentPart.getMasterAddress();
-                        
+
                         RFuture<RedisClient> future = changeMaster(slot, newUri);
                         future.onComplete((res, e) -> {
                             if (e != null) {
                                 currentPart.setMasterAddress(oldUri);
+                            } else {
+                                disconnectNode(oldUri);
                             }
                         });
-                        
+
                         currentPart.setMasterAddress(newUri);
                     }
                 }
@@ -686,12 +673,9 @@ public class ClusterConnectionManager extends MasterSlaveConnectionManager {
         return result;
     }
 
+    @Override
     public RedisURI applyNatMap(RedisURI address) {
-        String mappedAddress = natMap.get(address.getHost() + ":" + address.getPort());
-        if (mappedAddress != null) {
-            return new RedisURI(address.getScheme() + "://" + mappedAddress);
-        }
-        return address;
+        return natMapper.map(address);
     }
     
     private Collection<ClusterPartition> parsePartitions(List<ClusterNodeInfo> nodes) {

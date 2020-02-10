@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2013-2019 Nikita Koksharov
+ * Copyright (c) 2013-2020 Nikita Koksharov
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -53,7 +53,7 @@ public interface RBuckets extends RBucketsAsync {
     void set(Map<String, ?> buckets);
 
     /*
-     * Use RKeys.deleteAsync method instead
+     * Use RKeys.delete method instead
      */
     @Deprecated
     long delete(String... keys);

@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2013-2019 Nikita Koksharov
+ * Copyright (c) 2013-2020 Nikita Koksharov
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,10 +15,12 @@
  */
 package org.redisson.config;
 
+import org.redisson.api.HostNatMapper;
+import org.redisson.api.HostPortNatMapper;
+import org.redisson.api.NatMapper;
+
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -29,7 +31,7 @@ import java.util.Map;
  */
 public class ClusterServersConfig extends BaseMasterSlaveServersConfig<ClusterServersConfig> {
 
-    private Map<String, String> natMap = Collections.emptyMap();
+    private NatMapper natMapper = NatMapper.direct();
     
     /**
      * Redis cluster node urls list
@@ -41,7 +43,7 @@ public class ClusterServersConfig extends BaseMasterSlaveServersConfig<ClusterSe
      */
     private int scanInterval = 5000;
 
-    private boolean checkSlotsCoverage;
+    private boolean checkSlotsCoverage = true;
 
     public ClusterServersConfig() {
     }
@@ -50,7 +52,7 @@ public class ClusterServersConfig extends BaseMasterSlaveServersConfig<ClusterSe
         super(config);
         setNodeAddresses(config.getNodeAddresses());
         setScanInterval(config.getScanInterval());
-        setNatMap(new HashMap<>(config.getNatMap()));
+        setNatMapper(config.getNatMapper());
         setCheckSlotsCoverage(config.isCheckSlotsCoverage());
     }
 
@@ -94,7 +96,7 @@ public class ClusterServersConfig extends BaseMasterSlaveServersConfig<ClusterSe
     /**
      * Enables cluster slots check during Redisson startup.
      * <p>
-     * Default is <code>false</code>
+     * Default is <code>true</code>
      *
      * @param checkSlotsCoverage - boolean value
      * @return config
@@ -104,17 +106,32 @@ public class ClusterServersConfig extends BaseMasterSlaveServersConfig<ClusterSe
         return this;
     }
 
-    public Map<String, String> getNatMap() {
-        return natMap;
+    /*
+     * Use {@link #setNatMapper(NatMapper)}
+     */
+    @Deprecated
+    public ClusterServersConfig setNatMap(Map<String, String> natMap) {
+        HostPortNatMapper mapper = new HostPortNatMapper();
+        mapper.setHostsPortMap(natMap);
+        this.natMapper = mapper;
+        return this;
     }
+
+    public NatMapper getNatMapper() {
+        return natMapper;
+    }
+
     /**
-     * Defines NAT mapping. Address as a map key is replaced with mapped address as value.
-     * 
-     * @param natMap - nat mapping
+     * Defines NAT mapper which maps Redis URI object.
+     *
+     * @see HostNatMapper
+     * @see HostPortNatMapper
+     *
+     * @param natMapper - nat mapper object
      * @return config
      */
-    public ClusterServersConfig setNatMap(Map<String, String> natMap) {
-        this.natMap = natMap;
+    public ClusterServersConfig setNatMapper(NatMapper natMapper) {
+        this.natMapper = natMapper;
         return this;
     }
     

@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2013-2019 Nikita Koksharov
+ * Copyright (c) 2013-2020 Nikita Koksharov
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -244,8 +244,22 @@ public class MasterSlaveConnectionManager implements ConnectionManager {
             conn.closeAsync();
         }
     }
-    
-    protected RFuture<RedisConnection> connectToNode(BaseMasterSlaveServersConfig<?> cfg, RedisURI addr, RedisClient client, String sslHostname) {
+
+    protected final void disconnectNode(RedisURI addr) {
+        RedisConnection conn = nodeConnections.remove(addr);
+        if (conn != null) {
+            conn.closeAsync();
+        }
+    }
+
+    protected final void disconnectNode(RedisClient client) {
+        RedisConnection conn = nodeConnections.remove(client);
+        if (conn != null) {
+            conn.closeAsync();
+        }
+    }
+
+    protected final RFuture<RedisConnection> connectToNode(BaseMasterSlaveServersConfig<?> cfg, RedisURI addr, RedisClient client, String sslHostname) {
         final Object key;
         if (client != null) {
             key = client;

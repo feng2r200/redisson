@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2013-2019 Nikita Koksharov
+ * Copyright (c) 2013-2020 Nikita Koksharov
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -224,7 +224,7 @@ public class BaseMasterSlaveServersConfig<T extends BaseMasterSlaveServersConfig
     /**
      * Minimum idle connection pool size for subscription (pub/sub) channels
      * <p>
-     * Default is <code>10</code>
+     * Default is <code>24</code>
      * <p>
      * @see #setSlaveConnectionPoolSize(int)
      * 
@@ -242,7 +242,7 @@ public class BaseMasterSlaveServersConfig<T extends BaseMasterSlaveServersConfig
     /**
      * Redis 'master' node minimum idle connection amount for <b>each</b> slave node
      * <p>
-     * Default is <code>10</code>
+     * Default is <code>24</code>
      * <p>
      * @see #setMasterConnectionPoolSize(int)
      * 

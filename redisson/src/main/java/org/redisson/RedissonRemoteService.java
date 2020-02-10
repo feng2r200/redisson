@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2013-2019 Nikita Koksharov
+ * Copyright (c) 2013-2020 Nikita Koksharov
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -124,7 +124,14 @@ public class RedissonRemoteService extends BaseRemoteService implements RRemoteS
         RBlockingQueue<String> requestQueue = getBlockingQueue(requestQueueName, StringCodec.INSTANCE);
         return requestQueue.size();
     }
-    
+
+    @Override
+    public RFuture<Integer> getPendingInvocationsAsync(Class<?> remoteInterface) {
+        String requestQueueName = getRequestQueueName(remoteInterface);
+        RBlockingQueue<String> requestQueue = getBlockingQueue(requestQueueName, StringCodec.INSTANCE);
+        return requestQueue.sizeAsync();
+    }
+
     @Override
     public int getFreeWorkers(Class<?> remoteInterface) {
         Entry entry = remoteMap.get(remoteInterface);
@@ -160,6 +167,11 @@ public class RedissonRemoteService extends BaseRemoteService implements RRemoteS
 
     @Override
     public <T> boolean tryExecute(Class<T> remoteInterface, T object, long timeout, TimeUnit timeUnit) throws InterruptedException {
+        return tryExecute(remoteInterface, object, commandExecutor.getConnectionManager().getExecutor(), timeout, timeUnit);
+    }
+
+    @Override
+    public <T> boolean tryExecute(Class<T> remoteInterface, T object, ExecutorService executorService, long timeout, TimeUnit timeUnit) throws InterruptedException {
         String requestQueueName = getRequestQueueName(remoteInterface);
         RBlockingQueue<String> requestQueue = getBlockingQueue(requestQueueName, StringCodec.INSTANCE);
 
@@ -177,19 +189,30 @@ public class RedissonRemoteService extends BaseRemoteService implements RRemoteS
             throw new IllegalStateException("Task can't be found for request: " + requestId);
         }
 
-        RFuture<RRemoteServiceResponse> r = executeMethod(remoteInterface, requestQueue, commandExecutor.getConnectionManager().getExecutor(), request, object);
+        RFuture<RRemoteServiceResponse> r = executeMethod(remoteInterface, requestQueue, executorService, request, object);
         commandExecutor.getInterrupted(r);
         return true;
     }
 
     @Override
-    public <T> RFuture<Boolean> tryExecuteAsync(Class<T> remoteInterface, T object) {
+    public <T> RFuture<Boolean> tryExecuteAsync(Class<T> remoteInterface, T object, long timeout, TimeUnit timeUnit) {
+        return tryExecuteAsync(remoteInterface, object, commandExecutor.getConnectionManager().getExecutor(), timeout, timeUnit);
+    }
+
+    @Override
+    public <T> RFuture<Boolean> tryExecuteAsync(Class<T> remoteInterface, T object, ExecutorService executor, long timeout, TimeUnit timeUnit) {
         RPromise<Boolean> result = new RedissonPromise<>();
+        result.setUncancellable();
         String requestQueueName = getRequestQueueName(remoteInterface);
 
         RBlockingQueue<String> requestQueue = getBlockingQueue(requestQueueName, StringCodec.INSTANCE);
-        RFuture<String> poll = requestQueue.pollAsync();
-        poll.onComplete((requestId, e) -> {
+        RFuture<String> pollFuture;
+        if (timeout == -1) {
+            pollFuture = requestQueue.pollAsync();
+        } else {
+            pollFuture = requestQueue.pollAsync(timeout, timeUnit);
+        }
+        pollFuture.onComplete((requestId, e) -> {
             if (e != null) {
                 result.tryFailure(e);
                 return;
@@ -213,7 +236,7 @@ public class RedissonRemoteService extends BaseRemoteService implements RRemoteS
                     return;
                 }
 
-                RFuture<RRemoteServiceResponse> future = executeMethod(remoteInterface, requestQueue, commandExecutor.getConnectionManager().getExecutor(), request, object);
+                RFuture<RRemoteServiceResponse> future = executeMethod(remoteInterface, requestQueue, executor, request, object);
                 future.onComplete((r, ex) -> {
                     if (ex != null) {
                         result.tryFailure(ex);
@@ -225,6 +248,11 @@ public class RedissonRemoteService extends BaseRemoteService implements RRemoteS
             });
         });
         return result;
+    }
+
+    @Override
+    public <T> RFuture<Boolean> tryExecuteAsync(Class<T> remoteInterface, T object) {
+        return tryExecuteAsync(remoteInterface, object, -1, null);
     }
     
     private <T> void subscribe(Class<T> remoteInterface, RBlockingQueue<String> requestQueue,
@@ -376,11 +404,42 @@ public class RedissonRemoteService extends BaseRemoteService implements RRemoteS
         RPromise<RemoteServiceCancelRequest> cancelRequestFuture = new RedissonPromise<>();
         scheduleCheck(cancelRequestMapName, new RequestId(request.getId()), cancelRequestFuture);
 
-        java.util.concurrent.Future<?> submitFuture = executor.submit(() -> {
-            invokeMethod(remoteInterface, requestQueue, request, method, responseName, executor,
-                    cancelRequestFuture, responsePromise);
+        responsePromise.onComplete((result, e) -> {
+            if (request.getOptions().isResultExpected()
+                || result instanceof RemoteServiceCancelResponse) {
+
+                long timeout = 60 * 1000;
+                if (request.getOptions().getExecutionTimeoutInMillis() != null) {
+                    timeout = request.getOptions().getExecutionTimeoutInMillis();
+                }
+
+                RBlockingQueueAsync<RRemoteServiceResponse> queue = getBlockingQueue(responseName, codec);
+                try {
+                    RFuture<Void> clientsFuture = queue.putAsync(result);
+                    queue.expireAsync(timeout, TimeUnit.MILLISECONDS);
+
+                    clientsFuture.onComplete((res, exc) -> {
+                        if (exc != null) {
+                            if (exc instanceof RedissonShutdownException) {
+                                return;
+                            }
+                            log.error("Can't send response: " + result + " for request: " + request, exc);
+                        }
+
+                        resubscribe(remoteInterface, requestQueue, executor, method.getBean());
+                    });
+                } catch (Exception ex) {
+                    log.error("Can't send response: " + result + " for request: " + request, e);
+                }
+            } else {
+                resubscribe(remoteInterface, requestQueue, executor, method.getBean());
+            }
         });
-        
+
+        java.util.concurrent.Future<?> submitFuture = executor.submit(() -> {
+            invokeMethod(request, method, cancelRequestFuture, responsePromise);
+        });
+
         cancelRequestFuture.onComplete((r, e) -> {
             if (e != null) {
                 return;
@@ -405,10 +464,8 @@ public class RedissonRemoteService extends BaseRemoteService implements RRemoteS
         return responsePromise;
     }
 
-    protected <T> void invokeMethod(Class<T> remoteInterface,
-            RBlockingQueue<String> requestQueue, RemoteServiceRequest request,
-            RemoteServiceMethod method, String responseName, ExecutorService executor,
-            RFuture<RemoteServiceCancelRequest> cancelRequestFuture, RPromise<RRemoteServiceResponse> responsePromise) {
+    protected <T> void invokeMethod(RemoteServiceRequest request, RemoteServiceMethod method,
+                RFuture<RemoteServiceCancelRequest> cancelRequestFuture, RPromise<RRemoteServiceResponse> responsePromise) {
         try {
             Object result = method.getMethod().invoke(method.getBean(), request.getArgs());
 
@@ -422,36 +479,6 @@ public class RedissonRemoteService extends BaseRemoteService implements RRemoteS
 
         if (cancelRequestFuture != null) {
             cancelRequestFuture.cancel(false);
-        }
-        
-        // send the response only if expected or task was canceled
-        if (request.getOptions().isResultExpected()
-                || responsePromise.getNow() instanceof RemoteServiceCancelResponse) {
-            long timeout = 60 * 1000;
-            if (request.getOptions().getExecutionTimeoutInMillis() != null) {
-                timeout = request.getOptions().getExecutionTimeoutInMillis();
-            }
-
-            RBlockingQueueAsync<RRemoteServiceResponse> queue = getBlockingQueue(responseName, codec);
-            try {
-                RFuture<Void> clientsFuture = queue.putAsync(responsePromise.getNow());
-                queue.expireAsync(timeout, TimeUnit.MILLISECONDS);
-
-                clientsFuture.onComplete((res, e) -> {
-                    if (e != null) {
-                        if (e instanceof RedissonShutdownException) {
-                            return;
-                        }
-                        log.error("Can't send response: " + responsePromise.getNow() + " for request: " + request, e);
-                    }
-
-                    resubscribe(remoteInterface, requestQueue, executor, method.getBean());
-                });
-            } catch (Exception e) {
-                log.error("Can't send response: " + responsePromise.getNow() + " for request: " + request, e);
-            }
-        } else {
-            resubscribe(remoteInterface, requestQueue, executor, method.getBean());
         }
     }
 

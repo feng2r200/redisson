@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2013-2019 Nikita Koksharov
+ * Copyright (c) 2013-2020 Nikita Koksharov
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -36,7 +36,7 @@ abstract class EvictionTask implements Runnable {
     final Deque<Integer> sizeHistory = new LinkedList<Integer>();
     final int minDelay;
     final int maxDelay;
-    final int keysLimit = 100;
+    final int keysLimit;
     
     int delay = 5;
 
@@ -47,6 +47,7 @@ abstract class EvictionTask implements Runnable {
         this.executor = executor;
         this.minDelay = executor.getConnectionManager().getCfg().getMinCleanUpDelay();
         this.maxDelay = executor.getConnectionManager().getCfg().getMaxCleanUpDelay();
+        this.keysLimit = executor.getConnectionManager().getCfg().getCleanUpKeysAmount();
     }
 
     public void schedule() {

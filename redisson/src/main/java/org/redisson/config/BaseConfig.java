@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2013-2019 Nikita Koksharov
+ * Copyright (c) 2013-2020 Nikita Koksharov
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -180,7 +180,6 @@ class BaseConfig<T extends BaseConfig<T>> {
      * <p>
      * Default is <code>1500</code> milliseconds
      *
-     * @see retryAttempts
      * @param retryInterval - time in milliseconds
      * @return config
      */
@@ -257,6 +256,8 @@ class BaseConfig<T extends BaseConfig<T>> {
      * If pooled connection not used for a <code>timeout</code> time
      * and current connections amount bigger than minimum idle connections pool size,
      * then it will closed and removed from pool.
+     * <p>
+     * Default is <code>10000</code> milliseconds.
      *
      * @param idleConnectionTimeout - timeout in milliseconds
      * @return config

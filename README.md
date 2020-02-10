@@ -103,14 +103,14 @@ Used by
     <dependency>
        <groupId>org.redisson</groupId>
        <artifactId>redisson</artifactId>
-       <version>3.12.0</version>
+       <version>3.12.1</version>
     </dependency>  
 
 #### Gradle
-    compile 'org.redisson:redisson:3.12.0'  
+    compile 'org.redisson:redisson:3.12.1'  
 
 #### SBT
-    libraryDependencies += "org.redisson" % "redisson" % "3.12.0"
+    libraryDependencies += "org.redisson" % "redisson" % "3.12.1"
 
 #### Java
 
@@ -168,16 +168,14 @@ Consider __[Redisson PRO](https://redisson.pro)__ version for advanced features 
 
 ## Downloads
    
-[Redisson 3.12.0](https://repository.sonatype.org/service/local/artifact/maven/redirect?r=central-proxy&g=org.redisson&a=redisson&v=3.12.0&e=jar),
-[Redisson node 3.12.0](https://repository.sonatype.org/service/local/artifact/maven/redirect?r=central-proxy&g=org.redisson&a=redisson-all&v=3.12.0&e=jar)  
+[Redisson 3.12.1](https://repository.sonatype.org/service/local/artifact/maven/redirect?r=central-proxy&g=org.redisson&a=redisson&v=3.12.1&e=jar),
+[Redisson node 3.12.1](https://repository.sonatype.org/service/local/artifact/maven/redirect?r=central-proxy&g=org.redisson&a=redisson-all&v=3.12.1&e=jar)  
 
 ## FAQs
 
 [Q: I saw a RedisTimeOutException, What does it mean? What shall I do? Can Redisson Team fix it?](https://github.com/redisson/redisson/wiki/16.-FAQ#q-i-saw-a-redistimeoutexception-what-does-it-mean-what-shall-i-do-can-redisson-team-fix-it)
 
 [Q: I saw a com.fasterxml.jackson.databind.JsonMappingException during deserialization process, can you fix it?](https://github.com/redisson/redisson/wiki/16.-FAQ#q-i-saw-a-comfasterxmljacksondatabindjsonmappingexception-during-deserialization-process-can-you-fix-it)
-
-[Q: There were too many quotes appeared in the redis-cli console output, how do I fix it?](https://github.com/redisson/redisson/wiki/16.-FAQ#q-there-were-too-many-quotes-appeared-in-the-redis-cli-console-output-how-do-i-fix-it)
 
 [Q: When do I need to shut down a Redisson instance, at the end of each request or the end of the life of a thread?](https://github.com/redisson/redisson/wiki/16.-FAQ#q-when-do-i-need-to-shut-down-a-redisson-instance-at-the-end-of-each-request-or-the-end-of-the-life-of-a-thread)
 

@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2013-2019 Nikita Koksharov
+ * Copyright (c) 2013-2020 Nikita Koksharov
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,9 +15,6 @@
  */
 package org.redisson;
 
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
-
 import org.redisson.api.*;
 import org.redisson.client.codec.Codec;
 import org.redisson.config.Config;
@@ -25,25 +22,10 @@ import org.redisson.config.ConfigSupport;
 import org.redisson.connection.ConnectionManager;
 import org.redisson.eviction.EvictionScheduler;
 import org.redisson.remote.ResponseEntry;
-import org.redisson.rx.CommandRxExecutor;
-import org.redisson.rx.CommandRxService;
-import org.redisson.rx.RedissonBatchRx;
-import org.redisson.rx.RedissonBlockingDequeRx;
-import org.redisson.rx.RedissonBlockingQueueRx;
-import org.redisson.rx.RedissonKeysRx;
-import org.redisson.rx.RedissonLexSortedSetRx;
-import org.redisson.rx.RedissonListMultimapRx;
-import org.redisson.rx.RedissonListRx;
-import org.redisson.rx.RedissonMapCacheRx;
-import org.redisson.rx.RedissonMapRx;
-import org.redisson.rx.RedissonReadWriteLockRx;
-import org.redisson.rx.RedissonScoredSortedSetRx;
-import org.redisson.rx.RedissonSetCacheRx;
-import org.redisson.rx.RedissonSetMultimapRx;
-import org.redisson.rx.RedissonSetRx;
-import org.redisson.rx.RedissonTopicRx;
-import org.redisson.rx.RedissonTransactionRx;
-import org.redisson.rx.RxProxyBuilder;
+import org.redisson.rx.*;
+
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 
 /**
  * Main infrastructure class allows to get access
@@ -500,6 +482,24 @@ public class RedissonRx implements RedissonRxClient {
         RedissonBlockingDeque<V> deque = new RedissonBlockingDeque<V>(codec, commandExecutor, name, null);
         return RxProxyBuilder.create(commandExecutor, deque, 
                 new RedissonBlockingDequeRx<V>(deque), RBlockingDequeRx.class);
+    }
+
+    @Override
+    public <V> RTransferQueueRx<V> getTransferQueue(String name) {
+        String remoteName = RedissonObject.suffixName(name, "remoteService");
+        RRemoteService service = getRemoteService(remoteName);
+        RedissonTransferQueue<V> queue = new RedissonTransferQueue<V>(connectionManager.getCommandExecutor(), name, service);
+        return RxProxyBuilder.create(commandExecutor, queue,
+                new RedissonTransferQueueRx<V>(queue), RTransferQueueRx.class);
+    }
+
+    @Override
+    public <V> RTransferQueueRx<V> getTransferQueue(String name, Codec codec) {
+        String remoteName = RedissonObject.suffixName(name, "remoteService");
+        RRemoteService service = getRemoteService(remoteName);
+        RedissonTransferQueue<V> queue = new RedissonTransferQueue<V>(codec, connectionManager.getCommandExecutor(), name, service);
+        return RxProxyBuilder.create(commandExecutor, queue,
+                new RedissonTransferQueueRx<V>(queue), RTransferQueueRx.class);
     }
 
     @Override
